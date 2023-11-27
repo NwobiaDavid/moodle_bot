@@ -4,7 +4,7 @@ import path from 'path';
 const __dirname = path.resolve();
 
 (async () => {
-  const browser = await puppeteer.launch({ headless: false }); // Change headless to false for visual debugging
+  const browser = await puppeteer.launch({ headless: false, devtools: true }); // Change headless to false for visual debugging
   const page = await browser.newPage();
   await page.setDefaultNavigationTimeout(0);
 
@@ -26,27 +26,38 @@ const __dirname = path.resolve();
     page.click(loginButtonSelector),
   ]);
 
-  const actionMenuSelector = '.usermenu';
-  // await page.content();
-  await page.waitForSelector(actionMenuSelector);
-  await page.click(actionMenuSelector);
-
-  // const linkDropdownXpath = ;
-  // await page.waitForXPath('xpath//*[@id="action-menu-1-menu"]/a[2]');
-  // await page.click('xpath//*[@id="action-menu-1-menu"]/a[2]')
-
-  // const linkDropdownXpath ='/html/body/div[3]/nav/ul[2]/li[2]/div/div/div/div/div/div/a[2]';
-  // await page.waitForXPath(linkDropdownXpath);
-  // const [linkhandle] = await page.$x(linkDropdownXpath);
-  // await linkhandle.click();
-
-  const dropdown = await page.waitForSelector('#yui_3_17_2_1_1701069246955_42')
-  await dropdown.click()
-
-
-
  // Wait for 3 seconds before taking the screenshot after the click
- await new Promise(resolve => setTimeout(resolve, 3000));
+ await new Promise(resolve => setTimeout(resolve, 5000));
+
+
+ let selector = 'div.dashboard-card';
+
+ // Wait for the courses to load (you might need to adjust this based on Moodle's behavior)
+ await page.waitForSelector(selector);
+ await page.setDefaultNavigationTimeout(0);
+// Extract data attributes using page.evaluate
+  const courses = await page.evaluate((selector) => {
+    const courseElements = document.querySelectorAll(selector);
+    const courseData = [];
+
+    courseElements.forEach(courseElement => {
+      const dataCourseId = courseElement.getAttribute('data-course-id');
+      const courseName = courseElement.querySelector('.coursename>.multiline').textContent.trim();
+      // const courseName = courseElement.innerText.trim();
+
+      courseData.push({ id: dataCourseId, name: courseName });
+    });
+
+    return courseData;
+  }, selector);
+
+ // Output the course information
+ console.log('User Courses:', courses);
+
+ for (const obj of courses) {
+  await page.goto(`https://moodle.cu.edu.ng/course/view.php?id=${obj.id}`);
+  console.log(`inside ${obj.name}`);
+}
 
  await Promise.all([
    page.screenshot({ path: screenshotPathAfterClick }),
