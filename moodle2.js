@@ -1,14 +1,21 @@
 import puppeteer from 'puppeteer';
 import path from 'path';
-import { writeFileSync } from 'fs';
+import fs,{ writeFileSync, mkdirSync } from 'fs';
 import axios from 'axios';
+import https from 'https';
 import HttpsProxyAgent from 'https-proxy-agent';
+import { DownloaderHelper } from 'node-downloader-helper';
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 const __dirname = path.resolve();
 
+function sanitizeFileName(fileName) {
+  return fileName.replace(/[\\/:"*?<>|]+/g, '_');
+}
+
 (async () => {
   try {
-    const browser = await puppeteer.launch({ headless: "new" });
+    const browser = await puppeteer.launch({ headless: false, devtools: true });
     const page = await browser.newPage();
     await page.setDefaultNavigationTimeout(0);
 
@@ -63,52 +70,72 @@ const __dirname = path.resolve();
     await page.click(viewmore);
 
     const selector = '.contentnode li a';
-    await page.waitForSelector(selector)
+    await page.waitForSelector(selector);
 
     // Extract data attributes using page.evaluate
-    const courses = await page.evaluate(selector => {
-        const courseElements = document.querySelectorAll(selector);
-      
-        return Array.from(courseElements).map(courseElement => {
-          const courseName = courseElement.textContent.trim();
-          const courselink = courseElement.getAttribute('href');
-      
-          return { link: courselink, name: courseName };
-        });
-      }, selector);
+    const courses = await page.evaluate((selector) => {
+      const courseElements = document.querySelectorAll(selector);
+
+      return Array.from(courseElements).map((courseElement) => {
+        const courseName = courseElement.textContent.trim();
+        const courselink = courseElement.getAttribute('href');
+        const url = new URL(courselink);
+        const courseId = url.searchParams.get('course');
+
+        return { link: courselink, id: courseId, name: courseName };
+      });
+    }, selector);
 
     // Output the course information
     console.log('User Courses:', courses);
 
-    // for (const obj of courses) {
-    //   await page.goto(obj.link);
-    //   console.log(`inside ${obj.name}`);
+    for (const obj of courses) {
+      await page.goto(`https://moodle.cu.edu.ng/course/view.php?id=${obj.id}`);
+      console.log(`inside ${obj.name}`);
 
-    //   const selectorNotes = '.aalink';
-    //   await page.waitForSelector(selectorNotes);
-    //   console.log("waited...");
+      const selectorNotes = '.aalink';
+      await page.waitForSelector(selectorNotes);
+      console.log('waited...');
 
-    //   const notes = await page.evaluate((selectorNotes) => {
-    //     const notesList = document.querySelectorAll(selectorNotes);
-    //     const notesArray = Array.from(notesList);
-    //     return notesArray.map((note) => note.href);
-    //   }, selectorNotes);
+      const notes = await page.evaluate((selectorNotes, keyword) => {
+        const notesList = document.querySelectorAll(selectorNotes);
+        const notesArray = Array.from(notesList);
+      
+        // Filter notes to include only those containing the keyword "resource"
+        const filteredNotes = notesArray
+          .filter((note) => note.href.includes(keyword))
+          .map((note) => note.href);
+      
+        return filteredNotes;
+      }, selectorNotes, 'resource');
 
-    //   for (let i = 0; i < notes.length; i++) {
-    //     const note = notes[i];
+      for (let i = 0; i < notes.length; i++) {
+        const note = notes[i];
+        console.log(`Before click: ${note}`);
 
-    // Using Axios to download PDF files
-    // const agent = new HttpsProxyAgent('http://your-proxy-url');
-    // const response = await axios.get(note, { responseType:
+        // Click on the note link
+        await page.goto(note, {waitUntil: "domcontentloaded"});
 
-    // Alternatively, you can use the following to save the file directly
-    // const pdfPath = path.join(__dirname, `note_${obj.name}_${i + 1}.pdf`);
-    // writeFileSync(pdfPath, Buffer.from(response.data));
+        // Wait for the PDF to load
+        new Promise((r) => setTimeout(r, 3000));
 
-    // console.log(`PDF file saved at: ${pdfPath}`);
+        // Get the final URL after the click
+        const finalUrl = page.url();
+        console.log(`After click: ${finalUrl}`);
 
-    //   }
-    // }
+        // Generate PDF file path
+        const pdfDir = path.join(__dirname, 'pdfs');
+        mkdirSync(pdfDir, { recursive: true });
+        const sanitizedFileName = sanitizeFileName(`note_${obj.name}_${i + 1}.pdf`);
+        const pdfPath = path.join(pdfDir, sanitizedFileName);
+
+        // Download the PDF using page.pdf()
+        await page.pdf({ path: pdfPath, format: 'A4' });
+
+        console.log(`PDF file saved at: ${pdfPath}`);
+      }
+      
+    }
 
     await page.screenshot({ path: screenshotPathAfterClick });
     console.log('Screenshot after click saved at:', screenshotPathAfterClick);
