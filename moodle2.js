@@ -1,11 +1,11 @@
 import puppeteer from 'puppeteer';
 import path from 'path';
-import fs,{ writeFileSync, mkdirSync } from 'fs';
+import fs, { mkdirSync, writeFileSync } from 'fs';
 import axios from 'axios';
 import https from 'https';
 import HttpsProxyAgent from 'https-proxy-agent';
 import { DownloaderHelper } from 'node-downloader-helper';
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 const __dirname = path.resolve();
 
@@ -89,6 +89,7 @@ function sanitizeFileName(fileName) {
     // Output the course information
     console.log('User Courses:', courses);
 
+    //to download all notes from each course
     for (const obj of courses) {
       await page.goto(`https://moodle.cu.edu.ng/course/view.php?id=${obj.id}`);
       console.log(`inside ${obj.name}`);
@@ -97,44 +98,57 @@ function sanitizeFileName(fileName) {
       await page.waitForSelector(selectorNotes);
       console.log('waited...');
 
-      const notes = await page.evaluate((selectorNotes, keyword) => {
-        const notesList = document.querySelectorAll(selectorNotes);
-        const notesArray = Array.from(notesList);
-      
-        // Filter notes to include only those containing the keyword "resource"
-        const filteredNotes = notesArray
-          .filter((note) => note.href.includes(keyword))
-          .map((note) => note.href);
-      
-        return filteredNotes;
-      }, selectorNotes, 'resource');
+      const notes = await page.evaluate(
+        (selectorNotes, keyword) => {
+          const notesList = document.querySelectorAll(selectorNotes);
+          const notesArray = Array.from(notesList);
+
+          // Filter notes to include only those containing the keyword "resource"
+          const filteredNotes = notesArray
+            .filter((note) => note.href.includes(keyword))
+            .map((note) => note.href);
+
+          return filteredNotes;
+        },
+        selectorNotes,
+        'resource'
+      );
 
       for (let i = 0; i < notes.length; i++) {
         const note = notes[i];
         console.log(`Before click: ${note}`);
 
         // Click on the note link
-        await page.goto(note, {waitUntil: "domcontentloaded"});
+        await page.goto(note, { waitUntil: 'domcontentloaded' });
 
         // Wait for the PDF to load
-        new Promise((r) => setTimeout(r, 3000));
+        new Promise((r) => setTimeout(r, 10000));
 
         // Get the final URL after the click
         const finalUrl = page.url();
         console.log(`After click: ${finalUrl}`);
 
-        // Generate PDF file path
-        const pdfDir = path.join(__dirname, 'pdfs');
-        mkdirSync(pdfDir, { recursive: true });
-        const sanitizedFileName = sanitizeFileName(`note_${obj.name}_${i + 1}.pdf`);
-        const pdfPath = path.join(pdfDir, sanitizedFileName);
+    // Generate file path and name
+    const downloadDir = path.join(__dirname, 'downloads');
+    mkdirSync(downloadDir, { recursive: true });
+    const sanitizedFileName = sanitizeFileName(`note_${obj.name}_${i + 1}.pdf`);
+    const filePath = path.join(downloadDir, sanitizedFileName);
 
-        // Download the PDF using page.pdf()
-        await page.pdf({ path: pdfPath, format: 'A4' });
+    // Evaluate in the browser context to trigger download
+    await page.evaluate(() => {
+      const downloadElement = document.createElement('a');
+      downloadElement.href = window.location.href; // Use the current URL or final URL as needed
+      downloadElement.download = 'download.pdf'; // You can set any default file name
+      document.body.appendChild(downloadElement);
+      downloadElement.click();
+      document.body.removeChild(downloadElement);
+    });
 
-        console.log(`PDF file saved at: ${pdfPath}`);
+   // Wait for the download to complete (you may need to adjust the wait time)
+   new Promise(r => setTimeout(r, 5000));
+
+      console.log(`File saved at: ${filePath}`);
       }
-      
     }
 
     await page.screenshot({ path: screenshotPathAfterClick });
