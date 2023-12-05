@@ -117,39 +117,70 @@ function sanitizeFileName(fileName) {
       for (let i = 0; i < notes.length; i++) {
         const note = notes[i];
         console.log(`Before click: ${note}`);
-
-        // Click on the note link
-        await page.goto(note, { waitUntil: 'domcontentloaded' });
-
-        // Wait for the PDF to load
-        new Promise((r) => setTimeout(r, 10000));
-
-        // Get the final URL after the click
-        const finalUrl = page.url();
-        console.log(`After click: ${finalUrl}`);
-
-    // Generate file path and name
-    const downloadDir = path.join(__dirname, 'downloads');
-    mkdirSync(downloadDir, { recursive: true });
-    const sanitizedFileName = sanitizeFileName(`note_${obj.name}_${i + 1}.pdf`);
-    const filePath = path.join(downloadDir, sanitizedFileName);
-
-    // Evaluate in the browser context to trigger download
-    await page.evaluate(() => {
-      const downloadElement = document.createElement('a');
-      downloadElement.href = window.location.href; // Use the current URL or final URL as needed
-      downloadElement.download = 'download.pdf'; // You can set any default file name
-      document.body.appendChild(downloadElement);
-      downloadElement.click();
-      document.body.removeChild(downloadElement);
-    });
-
-   // Wait for the download to complete (you may need to adjust the wait time)
-   new Promise(r => setTimeout(r, 5000));
-
-      console.log(`File saved at: ${filePath}`);
+    
+        // Open a new page for each note URL
+        const notePage = await browser.newPage();
+        
+        try {
+          // Navigate to the note URL
+          await notePage.goto(note, { waitUntil: 'domcontentloaded' });
+    
+          // Wait for the PDF to load
+          // await notePage.waitForTimeout(10000); 
+          new Promise(r => setTimeout(r, 10000));
+    
+          // Get the final URL after the click
+          const finalUrl = notePage.url();
+          console.log(`After click: ${finalUrl}`);
+    
+          if (finalUrl) {
+            // Generate file path and name
+            const downloadDir = path.join(__dirname, 'downloads');
+            mkdirSync(downloadDir, { recursive: true });
+            const sanitizedFileName = sanitizeFileName(
+              `note_${obj.name}_${i + 1}`
+            );
+            const filePath = path.join(downloadDir, sanitizedFileName);
+    
+            await notePage.evaluate(() => {
+              const downloadElement = document.createElement('a');
+              downloadElement.href = window.location.href; // Use the current URL or final URL as needed
+              downloadElement.download = 'download.pdf'; // You can set any default file name
+              document.body.appendChild(downloadElement);
+              downloadElement.click();
+              document.body.removeChild(downloadElement);
+            });
+    
+            // Wait for the download to complete (you may need to adjust the wait time)
+            // await notePage.waitForTimeout(5000);
+            new Promise(r => setTimeout(r, 5000));
+    
+            console.log(`File saved at: ${filePath}`);
+          } else {
+            console.log('no url');
+          }
+        } catch (error) {
+          console.error('Error processing note:', error);
+        } finally {
+          // Close the new page after processing
+          await notePage.close();
+        }
       }
     }
+        // Generate file path and name
+        // const downloadDir = path.join(__dirname, 'downloads');
+        // mkdirSync(downloadDir, { recursive: true });
+        // const sanitizedFileName = sanitizeFileName(`note_${obj.name}_${i + 1}`);
+        // const filePath = path.join(downloadDir, sanitizedFileName);
+
+        // // Use Axios to fetch the file content as a binary stream
+        // const response = await axios.get(finalUrl, { responseType: 'arraybuffer' });
+
+        // // Save the file using writeFileSync
+        // writeFileSync(filePath, Buffer.from(response.data, { encoding: 'binary' }));
+
+        // Wait for the download to complete (you may need to adjust the wait time)
+       
 
     await page.screenshot({ path: screenshotPathAfterClick });
     console.log('Screenshot after click saved at:', screenshotPathAfterClick);
