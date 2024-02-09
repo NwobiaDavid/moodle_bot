@@ -89,100 +89,19 @@ function sanitizeFileName(fileName) {
     // Output the course information
     console.log('User Courses:', courses);
 
+
+    
       // Add the search functionality
-    const searchTerm = 'phy316'; // Replace 'YourSearchTerm' with the actual search term
-    const searchedCourse = courses.find((course) =>
-      course.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // const searchTerm = 'phy316'; // Replace 'YourSearchTerm' with the actual search term
+    // const searchedCourse = courses.find((course) =>
+    //   course.name.toLowerCase().includes(searchTerm.toLowerCase())
+    // );
 
-    if(searchedCourse){
-      console.log(`found course: ${searchedCourse.name}, and now downloading...`);
+    // if(searchedCourse){
+    //   console.log(`found course: ${searchedCourse.name}, and now downloading...`);
 
-       await page.goto(`https://moodle.cu.edu.ng/course/view.php?id=${searchedCourse.id}`);
-      console.log(`inside ${searchedCourse.name}`);
-
-      const selectorNotes = '.aalink';
-      await page.waitForSelector(selectorNotes);
-      console.log('waited...');
-
-      const notes = await page.evaluate(
-        (selectorNotes, keyword) => {
-          const notesList = document.querySelectorAll(selectorNotes);
-          const notesArray = Array.from(notesList);
-
-          // Filter notes to include only those containing the keyword "resource"
-          const filteredNotes = notesArray
-            .filter((note) => note.href.includes(keyword))
-            .map((note) => note.href);
-
-          return filteredNotes;
-        },
-        selectorNotes,
-        'resource'
-      );
-
-      for (let i = 0; i < notes.length; i++) {
-        const note = notes[i];
-        console.log(`Before click: ${note}`);
-    
-        // Open a new page for each note URL
-        const notePage = await browser.newPage();
-        new Promise(r => setTimeout(r, 10000));
-        
-        try {
-          // Navigate to the note URL
-          await notePage.goto(note, { waitUntil: 'domcontentloaded' });
-    
-          // Wait for the PDF to load
-          // await notePage.waitForTimeout(10000); 
-          new Promise(r => setTimeout(r, 10000));
-    
-          // Get the final URL after the click
-          const finalUrl = notePage.url();
-          console.log(`After click: ${finalUrl}`);
-    
-          if (finalUrl) {
-            // Generate file path and name
-            const downloadDir = path.join(__dirname, 'downloads');
-            mkdirSync(downloadDir, { recursive: true });
-            const sanitizedFileName = sanitizeFileName(
-              `note_${searchedCourse.name}_${i + 1}`
-            );
-            const filePath = path.join(downloadDir, sanitizedFileName);
-    
-            await notePage.evaluate(() => {
-              const downloadElement = document.createElement('a');
-              downloadElement.href = window.location.href; // Use the current URL or final URL as needed
-              downloadElement.download = 'download.pdf'; // You can set any default file name
-              document.body.appendChild(downloadElement);
-              downloadElement.click();
-              document.body.removeChild(downloadElement);
-            });
-    
-            // Wait for the download to complete (you may need to adjust the wait time)
-            // await notePage.waitForTimeout(5000);
-            new Promise(r => setTimeout(r, 5000));
-    
-            console.log(`File saved at: ${filePath}`);
-          } else {
-            console.log('no url');
-          }
-        } catch (error) {
-          console.error('Error processing note:', error);
-        } finally {
-          // Close the new page after processing
-          await notePage.close();
-        }
-      }
-
-    }else{
-      console.log(`Course with search term "${searchTerm}" not found.`);
-    }
-
-    //to download all notes from each course
-    // for (const obj of courses) {
-    //   await page.goto(`https://moodle.cu.edu.ng/course/view.php?id=${obj.id}`);
-    //   console.log(`inside ${obj.name}`);
+    //    await page.goto(`https://moodle.cu.edu.ng/course/view.php?id=${searchedCourse.id}`);
+    //   console.log(`inside ${searchedCourse.name}`);
 
     //   const selectorNotes = '.aalink';
     //   await page.waitForSelector(selectorNotes);
@@ -210,6 +129,7 @@ function sanitizeFileName(fileName) {
     
     //     // Open a new page for each note URL
     //     const notePage = await browser.newPage();
+    //     new Promise(r => setTimeout(r, 10000));
         
     //     try {
     //       // Navigate to the note URL
@@ -228,7 +148,7 @@ function sanitizeFileName(fileName) {
     //         const downloadDir = path.join(__dirname, 'downloads');
     //         mkdirSync(downloadDir, { recursive: true });
     //         const sanitizedFileName = sanitizeFileName(
-    //           `note_${obj.name}_${i + 1}`
+    //           `note_${searchedCourse.name}_${i + 1}`
     //         );
     //         const filePath = path.join(downloadDir, sanitizedFileName);
     
@@ -256,7 +176,93 @@ function sanitizeFileName(fileName) {
     //       await notePage.close();
     //     }
     //   }
+
+    // }else{
+    //   console.log(`Course with search term "${searchTerm}" not found.`);
     // }
+
+    //to download all notes from each course
+    for (const obj of courses) {
+      await page.goto(`https://moodle.cu.edu.ng/course/view.php?id=${obj.id}`);
+      console.log(`inside ${obj.name}`);
+
+      const selectorNotes = '.aalink';
+      await page.waitForSelector(selectorNotes);
+      console.log('waited...');
+
+      const notes = await page.evaluate(
+        (selectorNotes, keyword) => {
+          const notesList = document.querySelectorAll(selectorNotes);
+          const notesArray = Array.from(notesList);
+
+          // Filter notes to include only those containing the keyword "resource"
+          const filteredNotes = notesArray
+            .filter((note) => note.href.includes(keyword))
+            .map((note) => note.href);
+
+          return filteredNotes;
+        },
+        selectorNotes,
+        'resource'
+      );
+
+      for (let i = 0; i < notes.length; i++) {
+        const note = notes[i];
+        console.log(`Before click: ${note}`);
+    
+        // Open a new page for each note URL
+        const notePage = await browser.newPage();
+        
+        try {
+          // Navigate to the note URL
+          await notePage.goto(note, { waitUntil: 'domcontentloaded' });
+    
+          // Wait for the PDF to load
+          // await notePage.waitForTimeout(10000); 
+          new Promise(r => setTimeout(r, 10000));
+    
+          // Get the final URL after the click
+          const finalUrl = notePage.url();
+          console.log(`After click: ${finalUrl}`);
+    
+          if (finalUrl) {
+            // Generate file path and name
+            const downloadDir = path.join(__dirname, 'downloads');
+            mkdirSync(downloadDir, { recursive: true });
+            const sanitizedFileName = sanitizeFileName(
+              `note_${obj.name}_${i + 1}`
+            );
+            const filePath = path.join(downloadDir, sanitizedFileName);
+    
+            await notePage.evaluate(() => {
+              const downloadElement = document.createElement('a');
+              downloadElement.href = window.location.href; // Use the current URL or final URL as needed
+              downloadElement.download = 'download.pdf'; // You can set any default file name
+              document.body.appendChild(downloadElement);
+              downloadElement.click();
+              document.body.removeChild(downloadElement);
+            });
+    
+            // Wait for the download to complete (you may need to adjust the wait time)
+            // await notePage.waitForTimeout(5000);
+            new Promise(r => setTimeout(r, 5000));
+    
+            console.log(`File saved at: ${filePath}`);
+          } else {
+            console.log('no url');
+          }
+        } catch (error) {
+          console.error('Error processing note:', error);
+        } finally {
+          // Close the new page after processing
+          await notePage.close();
+        }
+      }
+    }
+
+
+
+
         // Generate file path and name
         // const downloadDir = path.join(__dirname, 'downloads');
         // mkdirSync(downloadDir, { recursive: true });
