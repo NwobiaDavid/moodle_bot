@@ -1,10 +1,13 @@
 import express from 'express';
+import cors from 'cors';
 import puppeteer from 'puppeteer';
 import path from 'path';
 import fs, { mkdirSync } from 'fs';
 
 const app = express();
 const port = 3000;
+
+app.use(cors());
 
 // Middleware to parse JSON bodies
 app.use(express.json());
@@ -19,7 +22,7 @@ app.post('/downloadNotes', async (req, res) => {
   const { username, password } = req.body;
 
   try {
-    const browser = await puppeteer.launch({ headless: true });
+    const browser = await puppeteer.launch({ headless: "new" });
     const page = await browser.newPage();
     await page.setDefaultNavigationTimeout(0);
 
@@ -90,12 +93,12 @@ app.post('/downloadNotes', async (req, res) => {
           const finalUrl = notePage.url();
 
           if (finalUrl) {
-            const downloadDir = path.join(__dirname, 'downloads');
-            mkdirSync(downloadDir, { recursive: true });
+            // const downloadDir = path.join(__dirname, 'downloads');
+            // mkdirSync(downloadDir, { recursive: true });
             const sanitizedFileName = sanitizeFileName(
               `note_${obj.name}_${i + 1}`
             );
-            const filePath = path.join(downloadDir, sanitizedFileName);
+            // const filePath = path.join(downloadDir, sanitizedFileName);
 
             await notePage.evaluate(() => {
               const downloadElement = document.createElement('a');
@@ -106,7 +109,7 @@ app.post('/downloadNotes', async (req, res) => {
               document.body.removeChild(downloadElement);
             });
 
-            downloads.push(filePath);
+            downloads.push(finalUrl);
           }
         } catch (error) {
           console.error('Error processing note:', error);
@@ -126,5 +129,5 @@ app.post('/downloadNotes', async (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+  console.log(`Server is running on port ${port}...`);
 });
