@@ -7,7 +7,9 @@ import fs, { mkdirSync } from 'fs';
 const app = express();
 const port = 3000;
 
-app.use(cors());
+app.use(cors({
+  origin: "https://slides-getter.vercel.app/",
+}));
 
 // Middleware to parse JSON bodies
 app.use(express.json());
