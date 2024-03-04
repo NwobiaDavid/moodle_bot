@@ -8,11 +8,27 @@ const app = express();
 const port = 3000;
 
 // Set up CORS middleware
-app.use(cors({
-  origin: 'https://slides-getter.vercel.app', 
-  methods: ['GET', 'POST'], 
-  allowedHeaders: ['Content-Type', 'Authorization'], 
-}));
+// app.use(cors({
+//   origin: 'https://slides-getter.vercel.app', 
+//   methods: ['GET', 'POST'], 
+//   allowedHeaders: ['Content-Type', 'Authorization'], 
+// }));
+
+app.use(cors())''
+
+// app.use(cors({
+//   origin:'http://localhost:5173/', 
+//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'],
+//   allowedHeaders: ['Content-Type', 'Origin', 'X-Requested-With', 'Accept', 'x-client-key', 'x-client-token', 'x-client-secret', 'Authorization'],
+//   credentials: true
+// }));
+
+// app.use((req, res, next) => {
+//   // Allow requests from your front-end origin
+//   res.header('Access-Control-Allow-Origin', 'http://localhost:5173'); // Replace with your front-end origin
+//   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+//   next();
+// });
 
 // Middleware to parse JSON bodies
 app.use(express.json());
@@ -23,7 +39,7 @@ function sanitizeFileName(fileName) {
 }
 
 // Route to handle the API request
-app.post('/downloadNotes', async (req, res) => {
+app.post('/downloadNotes', async (req, res, next) => {
   const { username, password } = req.body;
 
   try {
