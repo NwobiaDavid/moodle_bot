@@ -4,6 +4,7 @@
     "cors": "^2.8.5",
     "express": "^4.18.2",
     "https-proxy-agent": "^7.0.2",
+    "jest-mock": "^29.7.0",
     "node-downloader-helper": "^2.1.9",
     "puppeteer": "^21.5.2",
     "puppeteer-core": "^21.5.2",
@@ -20,5 +21,8 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": ""
+  "description": "",
+  "devDependencies": {
+    "supertest": "^6.3.4"
+  }
 }

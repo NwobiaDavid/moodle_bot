@@ -24,20 +24,8 @@ function sanitizeFileName(fileName) {
     );
     await page.setViewport({ width: 1920, height: 1080 });
 
-    const screenshotPathBeforeClick = path.join(
-      __dirname,
-      'screenshot_before.png'
-    );
-    const screenshotPathAfterClick = path.join(
-      __dirname,
-      'screenshot_after.png'
-    );
-
-    await page.type('#username', '2100732');
-    await page.type('#password', 'david2005');
-
-    await page.screenshot({ path: screenshotPathBeforeClick });
-    console.log('Screenshot before click saved at:', screenshotPathBeforeClick);
+    await page.type('#username', process.env.USERNAME);
+    await page.type('#password', process.env.PASSWORD);
 
     const loginButtonSelector = '#kc-login';
     await Promise.all([
@@ -51,7 +39,6 @@ function sanitizeFileName(fileName) {
     const select = '.dropdown div [aria-labelledby="actionmenuaction-2"]';
     const button = await page.waitForSelector(select);
     await button.evaluate((b) => b.click());
-    console.log('clicked :)');
 
     const viewmore = 'li.viewmore a';
     await page.waitForSelector(viewmore);
@@ -77,6 +64,102 @@ function sanitizeFileName(fileName) {
     // Output the course information
     console.log('User Courses:', courses);
 
+
+
+
+    // Add the search functionality
+    const searchTerm = 'phy316'; // Replace 'YourSearchTerm' with the actual search term
+    const searchedCourse = courses.find((course) =>
+      course.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    if (searchedCourse) {
+      console.log(
+        `found course: ${searchedCourse.name}, and now downloading...`
+      );
+
+      await page.goto(
+        `https://moodle.cu.edu.ng/course/view.php?id=${searchedCourse.id}`
+      );
+      console.log(`inside ${searchedCourse.name}`);
+
+      const selectorNotes = '.aalink';
+      await page.waitForSelector(selectorNotes);
+      console.log('waited...');
+
+      const notes = await page.evaluate(
+        (selectorNotes, keyword) => {
+          const notesList = document.querySelectorAll(selectorNotes);
+          const notesArray = Array.from(notesList);
+
+          // Filter notes to include only those containing the keyword "resource"
+          const filteredNotes = notesArray
+            .filter((note) => note.href.includes(keyword))
+            .map((note) => note.href);
+
+          return filteredNotes;
+        },
+        selectorNotes,
+        'resource'
+      );
+
+      for (let i = 0; i < notes.length; i++) {
+        const note = notes[i];
+
+        // Open a new page for each note URL
+        const notePage = await browser.newPage();
+        new Promise((r) => setTimeout(r, 10000));
+
+        try {
+          // Navigate to the note URL
+          await notePage.goto(note, { waitUntil: 'domcontentloaded' });
+
+          // Wait for the PDF to load
+          // await notePage.waitForTimeout(10000);
+          new Promise((r) => setTimeout(r, 10000));
+
+          // Get the final URL after the click
+          const finalUrl = notePage.url();
+          console.log(`After click: ${finalUrl}`);
+
+          if (finalUrl) {
+            // Generate file path and name
+            const downloadDir = path.join(__dirname, 'downloads');
+            mkdirSync(downloadDir, { recursive: true });
+            const sanitizedFileName = sanitizeFileName(
+              `note_${searchedCourse.name}_${i + 1}`
+            );
+            const filePath = path.join(downloadDir, sanitizedFileName);
+
+            await notePage.evaluate(() => {
+              const downloadElement = document.createElement('a');
+              downloadElement.href = window.location.href;
+              downloadElement.download = 'download.pdf';
+              document.body.appendChild(downloadElement);
+              downloadElement.click();
+              document.body.removeChild(downloadElement);
+            });
+            new Promise((r) => setTimeout(r, 5000));
+
+            console.log(`File saved at: ${filePath}`);
+          } else {
+            console.log('no url');
+          }
+        } catch (error) {
+          console.error('Error processing note:', error);
+        } finally {
+          // Close the new page after processing
+          await notePage.close();
+        }
+      }
+    } else {
+      console.log(`Course with search term "${searchTerm}" not found.`);
+    }
+
+
+
+
+  
     //to download all notes from each course
     for (const obj of courses) {
       await page.goto(`https://moodle.cu.edu.ng/course/view.php?id=${obj.id}`);
@@ -105,22 +188,20 @@ function sanitizeFileName(fileName) {
       for (let i = 0; i < notes.length; i++) {
         const note = notes[i];
         console.log(`Before click: ${note}`);
-    
+
         // Open a new page for each note URL
         const notePage = await browser.newPage();
-        
+
         try {
-          // Navigate to the note URL
           await notePage.goto(note, { waitUntil: 'domcontentloaded' });
-    
+
           // Wait for the PDF to load
-          // await notePage.waitForTimeout(10000); 
-          new Promise(r => setTimeout(r, 10000));
-    
+          new Promise((r) => setTimeout(r, 10000));
+
           // Get the final URL after the click
           const finalUrl = notePage.url();
           console.log(`After click: ${finalUrl}`);
-    
+
           if (finalUrl) {
             // Generate file path and name
             const downloadDir = path.join(__dirname, 'downloads');
@@ -129,20 +210,19 @@ function sanitizeFileName(fileName) {
               `note_${obj.name}_${i + 1}`
             );
             const filePath = path.join(downloadDir, sanitizedFileName);
-    
+
             await notePage.evaluate(() => {
               const downloadElement = document.createElement('a');
-              downloadElement.href = window.location.href; // Use the current URL or final URL as needed
-              downloadElement.download = 'download.pdf'; // You can set any default file name
+              downloadElement.href = window.location.href;
+              downloadElement.download = 'download.pdf';
               document.body.appendChild(downloadElement);
               downloadElement.click();
               document.body.removeChild(downloadElement);
             });
-    
-            // Wait for the download to complete (you may need to adjust the wait time)
-            // await notePage.waitForTimeout(5000);
-            new Promise(r => setTimeout(r, 5000));
-    
+
+            // Wait for the download to complete
+            new Promise((r) => setTimeout(r, 5000));
+
             console.log(`File saved at: ${filePath}`);
           } else {
             console.log('no url');
@@ -155,7 +235,6 @@ function sanitizeFileName(fileName) {
         }
       }
     }
-       
 
     await page.screenshot({ path: screenshotPathAfterClick });
     console.log('Screenshot after click saved at:', screenshotPathAfterClick);
@@ -165,6 +244,3 @@ function sanitizeFileName(fileName) {
     console.error('Error:', error);
   }
 })();
-
-
-
