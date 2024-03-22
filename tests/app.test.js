@@ -1,4 +1,4 @@
-// Import necessary modules and functions
+import 'dotenv/config'
 import request from 'supertest';
 import app from '../index';
 import { getCourses } from '../scrape/src/getCourses';
@@ -27,7 +27,7 @@ describe('API Endpoints', () => {
       mocked(getCourses).mockRejectedValue(new Error('Test error'));
       const res = await request(server)
         .post('/api/downloadSpecificNotes')
-        .send({ username: '2100732', password: 'david2005', coursecode: 'phy412' });
+        .send({ username: process.env.USERNAME, password: process.env.PASSWORD, coursecode: 'phy412' });
       expect(res.status).toBe(500);
       expect(res.body.error).toBe('Internal server error');
     });
