@@ -38,6 +38,8 @@ This endpoint downloads notes for a specific course. It takes `username`, `passw
 5. Downloads each note.
 
 ```javascript
+// Brief example of how the function looks like
+
 app.post('/api/downloadSpecificNotes', async (req, res) => {
   // Extract username, password, and coursecode from request body
   const { username, password, coursecode } = req.body;
@@ -88,6 +90,8 @@ This endpoint downloads notes for all courses. It takes `username` and `password
 4. Downloads each note.
 
 ```javascript
+// Brief example of how the function looks like
+
 app.post('/api/downloadNotes', async (req, res, next) => {
   const { username, password } = req.body;
 
